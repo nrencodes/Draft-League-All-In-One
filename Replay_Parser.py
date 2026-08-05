@@ -1,5 +1,4 @@
 import requests
-from streamlit import status
 from Battle import Battle
 from Pokemon import Pokemon
 
