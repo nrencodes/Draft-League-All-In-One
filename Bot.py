@@ -15,7 +15,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
-GUILD = discord.Object(id=int(os.getenv('GUILD_ID')))
 
 def get_sheet_id(div_value):
     if div_value == "F":
@@ -66,10 +65,10 @@ def append_pokemon_to_roster(sheet, sheet_id, coach_id, pokemon_list, pokedex):
 
 @bot.event
 async def on_ready():
-    synced = await bot.tree.sync(guild=GUILD)
+    synced = await bot.tree.sync()
     print(f'{bot.user} has connected to Discord!')
 
-@bot.tree.command(name="replay", description="Gets the replay and displays KDA for each Pokemon.", guild=GUILD)
+@bot.tree.command(name="replay", description="Gets the replay and displays KDA for each Pokemon.")
 @app_commands.describe(url="Paste the Pokémon Showdown replay URL")
 @app_commands.checks.has_role(MOD)
 async def replay(interaction: discord.Interaction, url: str):
@@ -84,10 +83,9 @@ async def replay(interaction: discord.Interaction, url: str):
         await interaction.followup.send(f"{results}")
 
     except Exception as error:
-        print(f"Error occurred while fetching replay: {error}")
-        await interaction.followup.send("An error occurred while fetching the replay.")
+        await interaction.followup.send(f"An error occurred while fetching the replay: {type(error).__name__}: {error}")
 
-@bot.tree.command(name="upload", description="Uploads all the necessary data to the specified Google Sheet.", guild=GUILD)
+@bot.tree.command(name="upload", description="Uploads all the necessary data to the specified Google Sheet.")
 @app_commands.describe(url="Paste the Pokémon Showdown replay URL", div="Select the division for the replay data", week="Type the week for the replay data(1, 2, 3, etc.)")
 @app_commands.choices(div=[
     app_commands.Choice(name="Floatzel", value="F"),
@@ -96,7 +94,7 @@ async def replay(interaction: discord.Interaction, url: str):
 ])
 @app_commands.checks.has_role(MOD)
 async def upload(interaction: discord.Interaction, url: str, div: app_commands.Choice[str], week: int):
-    await interaction.response.defer(ephemeral=True)  # Defer the response to give more time for processing
+    await interaction.response.defer()
     try:
         parser = RP(url)
         message = parser.run()
@@ -106,9 +104,10 @@ async def upload(interaction: discord.Interaction, url: str, div: app_commands.C
 
         sheet = Sheet()
         sheet_id = get_sheet_id(div.value)
-
+        p1 = parser.battle.p1
+        p2 = parser.battle.p2
         replay_data = [
-            url, week, parser.battle.p1, parser.battle.p2, parser.battle.winner, parser.battle.differential
+            url, week, p1, p2, parser.battle.winner, parser.battle.differential
         ]
 
         pokemon_data = []
@@ -134,13 +133,12 @@ async def upload(interaction: discord.Interaction, url: str, div: app_commands.C
             await interaction.followup.send("That replay has already been uploaded.")
         else:
             sheet.append_pokemon_data(sheet_id, pokemon_data)
-            await interaction.followup.send("Data uploaded successfully.")
+            await interaction.followup.send(f"Data uploaded successfully for {p1} vs {p2}.")
 
     except Exception as error:
-        print(f"Error occurred while fetching replay: {error}")
-        await interaction.followup.send("An error occurred while fetching the replay.")
+        await interaction.followup.send(f"An error occurred while fetching the replay. {type(error).__name__}: {error}")
 
-@bot.tree.command(name="draft", description="Uploads the draft pick to the specified Google Sheet.", guild=GUILD)
+@bot.tree.command(name="draft", description="Uploads the draft pick to the specified Google Sheet.")
 @app_commands.describe(coach="Type the coach's name", pokemon="Type the Pokémon's name. MUST MATCH THE EXACT FORMAT IN THE TIERLIST(Landorus-Therian, Alolan Rattata, Mega Charizard X, Paldean Tauros Blaze, etc).", 
                        div="Select the division for the draft pick")
 @app_commands.choices(div=[
@@ -150,7 +148,7 @@ async def upload(interaction: discord.Interaction, url: str, div: app_commands.C
 ])
 @app_commands.checks.has_role(MOD)
 async def draft(interaction: discord.Interaction, coach: str, pokemon: str, div: app_commands.Choice[str]):
-    await interaction.response.defer(ephemeral=True)  # Defer the response to give more time for processing
+    await interaction.response.defer()
     try:
         sheet = Sheet()
         sheet_id = get_sheet_id(div.value)
@@ -217,9 +215,9 @@ async def draft(interaction: discord.Interaction, coach: str, pokemon: str, div:
         
     except Exception as error:
         print(f"Error occurred while uploading draft pick: {error}")
-        await interaction.followup.send("An error occurred while uploading the draft pick.")
+        await interaction.followup.send(f"An error occurred while uploading the draft pick: {type(error).__name__}: {error}")
 
-@bot.tree.command(name="free_agency", description="Uploads the transaction to the specified Google Sheet.", guild=GUILD)
+@bot.tree.command(name="free_agency", description="Uploads the transaction to the specified Google Sheet.")
 @app_commands.describe(week="Type the week for the transaction data(1, 2, 3, etc.)", 
                        coach="Type the name of the coach",
                        drop1="Type the name of the first Pokémon removed from the first coach's roster",
@@ -241,7 +239,7 @@ async def free_agency(interaction: discord.Interaction,
                       drop1: str = None, drop2: str = None, drop3: str = None,
                       pickup1: str = None, pickup2: str = None, pickup3: str = None,
                       notes: str = None):
-    await interaction.response.defer(ephemeral=True) 
+    await interaction.response.defer() 
     try:
         sheet = Sheet()
         sheet_id = get_sheet_id(div.value)
@@ -337,14 +335,9 @@ async def free_agency(interaction: discord.Interaction,
         await interaction.followup.send("Transaction uploaded successfully.")
 
     except Exception as error:
-        print(f"Error occurred while uploading transaction: {error}")
+        await interaction.followup.send(f"An error occurred while uploading the transaction: {type(error).__name__}: {error}")
 
-        await interaction.followup.send(
-            f"Error occurred while uploading transaction:\n"
-            f"```{type(error).__name__}: {error}```"
-        )
-
-@bot.tree.command(name="trade", description="Uploads a trade to the specified Google Sheet.", guild=GUILD)
+@bot.tree.command(name="trade", description="Uploads a trade to the specified Google Sheet.")
 @app_commands.describe(week="Type the week for the transaction data(1, 2, 3, etc.)", 
                        coach="Type the name of the coach",
                        coach2="Type the name of the second coach",
@@ -367,7 +360,7 @@ async def trade(interaction: discord.Interaction,
                       drop1: str = None, drop2: str = None, drop3: str = None,
                       pickup1: str = None, pickup2: str = None, pickup3: str = None,
                       notes: str = None):
-    await interaction.response.defer(ephemeral=True) 
+    await interaction.response.defer() 
     try:
         sheet = Sheet()
         sheet_id = get_sheet_id(div.value)
@@ -529,13 +522,9 @@ async def trade(interaction: discord.Interaction,
         )
 
     except Exception as error:
-        print(f"Error occurred while processing the transaction: {error}")
-        await interaction.followup.send(
-            f"Error occurred while uploading trade:\n"
-            f"```{type(error).__name__}: {error}```"
-        )
+        await interaction.followup.send(f"An error occurred while uploading the trade: {type(error).__name__}: {error}")
 
-@bot.tree.command(name="team_wipe", description="Deletes an entire team's current roster.", guild=GUILD)
+@bot.tree.command(name="team_wipe", description="Deletes an entire team's current roster.")
 @app_commands.describe(coach="Coach whose roster should be deleted", div="Select the division")
 @app_commands.choices(div=[
     app_commands.Choice(name="Floatzel", value="F"),
@@ -576,14 +565,9 @@ async def team_wipe(interaction: discord.Interaction, coach: str, div: app_comma
         )
 
     except Exception as error:
-        print(f"Error occurred while wiping the team: {error}")
+        await interaction.followup.send(f"An error occurred while wiping the team: {type(error).__name__}: {error}")
 
-        await interaction.followup.send(
-            f"Error occurred while wiping the team:\n"
-            f"```{type(error).__name__}: {error}```"
-        )
-
-@bot.tree.command(name="forfeit", description="Record a forfeited match.", guild=GUILD)
+@bot.tree.command(name="forfeit", description="Record a forfeited match.")
 @app_commands.describe(week="Week of the match", winner="Winning coach", loser="Losing coach", div="Division")
 @app_commands.choices(div=[
     app_commands.Choice(name="Floatzel", value="F"),
@@ -592,7 +576,7 @@ async def team_wipe(interaction: discord.Interaction, coach: str, div: app_comma
 ])
 @app_commands.checks.has_role(MOD)
 async def forfeit(interaction: discord.Interaction, week: int, winner: str, loser: str, div: app_commands.Choice[str]):
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer()
     try:
         sheet = Sheet()
         sheet_id = get_sheet_id(div.value)
@@ -623,11 +607,9 @@ async def forfeit(interaction: discord.Interaction, week: int, winner: str, lose
             f"**Loser:** {loser}"
         )
     except Exception as error:
-        await interaction.followup.send(
-            f"```{type(error).__name__}: {error}```"
-        )
+        await interaction.followup.send(f"An error occurred while recording the forfeit: {type(error).__name__}: {error}")
 
-@bot.tree.command(name="double_forfeit" ,description="Record a double forfeit.",guild=GUILD)
+@bot.tree.command(name="double_forfeit" ,description="Record a double forfeit.")
 @app_commands.describe(week="Week of the match", coach_1="First coach", coach_2="Second coach", div="Division")
 @app_commands.choices(div=[
     app_commands.Choice(name="Floatzel", value="F"),
@@ -636,7 +618,7 @@ async def forfeit(interaction: discord.Interaction, week: int, winner: str, lose
 ])
 @app_commands.checks.has_role(MOD)
 async def double_forfeit(interaction: discord.Interaction, week: int, coach_1: str, coach_2: str, div: app_commands.Choice[str]):
-    await interaction.response.defer(ephemeral=True)
+    await interaction.response.defer()
     try:
         sheet = Sheet()
         sheet_id = get_sheet_id(div.value)
@@ -667,8 +649,6 @@ async def double_forfeit(interaction: discord.Interaction, week: int, coach_1: s
         )
 
     except Exception as error:
-        await interaction.followup.send(
-            f"```{type(error).__name__}: {error}```"
-        )
+        await interaction.followup.send(f"An error occurred while recording the double forfeit: {type(error).__name__}: {error}")
 
 bot.run(TOKEN)
