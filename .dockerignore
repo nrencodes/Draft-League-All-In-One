@@ -1,0 +1,6 @@
+.env
+.gitignore
+creds.json
+.vscode/
+WCB/
+__pycache__/

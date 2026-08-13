@@ -1,0 +1,6 @@
+name: WCB_Discord_Bot
+services:
+  bot:
+    build: .
+    env_file:
+      ./.env
