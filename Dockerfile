@@ -1,5 +1,5 @@
 # Import specified version of Python supported
-FROM python:3.13
+FROM python:3.13-alpine
 
 # Change to working directory and install requirements
 WORKDIR /app
