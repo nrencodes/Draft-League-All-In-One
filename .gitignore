@@ -3,3 +3,4 @@ creds.json
 .vscode/
 WCB/
 __pycache__/
+wcb-global-access.pem
